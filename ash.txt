@@ -1,0 +1,277 @@
+public interface ICategoryRepository
+{
+    Task<IEnumerable<categoriesDBtable>> GetAllAsync();
+    Task<categoriesDBtable> GetByIdAsync(int id);
+    Task AddAsync(categoriesDBtable category);
+    Task UpdateAsync(categoriesDBtable category);
+}
+
+
+CategoryRepository.cs
+
+public class CategoryRepository : ICategoryRepository
+{
+    private readonly AppDbContext _context;
+
+    public CategoryRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<categoriesDBtable>> GetAllAsync()
+    {
+        return await _context.Categories.Include(c => c.Courses).ToListAsync();
+    }
+
+    public async Task<categoriesDBtable> GetByIdAsync(int id)
+    {
+        return await _context.Categories
+            .Include(c => c.Courses)
+            .FirstOrDefaultAsync(c => c.id == id);
+    }
+
+    public async Task AddAsync(categoriesDBtable category)
+    {
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(categoriesDBtable category)
+    {
+        _context.Categories.Update(category);
+        await _context.SaveChangesAsync();
+    }
+}
+
+CategoryController.cs
+
+[Route("api/[controller]")]
+[ApiController]
+public class CategoryController : ControllerBase
+{
+    private readonly ICategoryRepository _repository;
+
+    public CategoryController(ICategoryRepository repository)
+    {
+        _repository = repository;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var data = await _repository.GetAllAsync();
+        return Ok(data);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var data = await _repository.GetByIdAsync(id);
+        if (data == null) return NotFound();
+        return Ok(data);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add(categoriesDBtable category)
+    {
+        await _repository.AddAsync(category);
+        return Ok("Category added");
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, categoriesDBtable category)
+    {
+        if (id != category.id) return BadRequest();
+        await _repository.UpdateAsync(category);
+        return Ok("Category updated");
+    }
+}
+
+
+ICourseRepository.cs
+public interface ICourseRepository
+{
+    Task<IEnumerable<CourseDBTable>> GetAllAsync();
+    Task<CourseDBTable?> GetByIdAsync(int id);
+    Task AddAsync(CourseDBTable course);
+    Task UpdateAsync(CourseDBTable course);
+}
+
+
+CourseRepository.cs
+public class CourseRepository : ICourseRepository
+{
+    private readonly AppDbContext _context;
+
+    public CourseRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<CourseDBTable>> GetAllAsync()
+    {
+        return await _context.Courses
+            .Include(c => c.Category)
+            .Include(c => c.Modules)
+            .ToListAsync();
+    }
+
+    public async Task<CourseDBTable?> GetByIdAsync(int id)
+    {
+        return await _context.Courses
+            .Include(c => c.Category)
+            .Include(c => c.Modules)
+            .FirstOrDefaultAsync(c => c.course_id == id);
+    }
+
+    public async Task AddAsync(CourseDBTable course)
+    {
+        _context.Courses.Add(course);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(CourseDBTable course)
+    {
+        _context.Courses.Update(course);
+        await _context.SaveChangesAsync();
+    }
+}
+
+CourseController.cs
+
+[Route("api/[controller]")]
+[ApiController]
+public class CourseController : ControllerBase
+{
+    private readonly ICourseRepository _repository;
+
+    public CourseController(ICourseRepository repository)
+    {
+        _repository = repository;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var courses = await _repository.GetAllAsync();
+        return Ok(courses);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var course = await _repository.GetByIdAsync(id);
+        if (course == null) return NotFound();
+        return Ok(course);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add(CourseDBTable course)
+    {
+        await _repository.AddAsync(course);
+        return Ok("Course added");
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, CourseDBTable course)
+    {
+        if (id != course.course_id) return BadRequest();
+        await _repository.UpdateAsync(course);
+        return Ok("Course updated");
+    }
+}
+
+
+IModuleRepository.cs
+
+public interface IModuleRepository
+{
+    Task<IEnumerable<moduleDBtable>> GetAllAsync();
+    Task<moduleDBtable?> GetByIdAsync(int id);
+    Task AddAsync(moduleDBtable module);
+    Task UpdateAsync(moduleDBtable module);
+}
+
+
+ModuleRepository.cs
+
+public class ModuleRepository : IModuleRepository
+{
+    private readonly AppDbContext _context;
+
+    public ModuleRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<moduleDBtable>> GetAllAsync()
+    {
+        return await _context.Modules
+            .Include(m => m.Course) // Include Course relation
+            .ToListAsync();
+    }
+
+    public async Task<moduleDBtable?> GetByIdAsync(int id)
+    {
+        return await _context.Modules
+            .Include(m => m.Course)
+            .FirstOrDefaultAsync(m => m.module_id == id);
+    }
+
+    public async Task AddAsync(moduleDBtable module)
+    {
+        _context.Modules.Add(module);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(moduleDBtable module)
+    {
+        _context.Modules.Update(module);
+        await _context.SaveChangesAsync();
+    }
+}
+
+
+ModuleController
+
+[Route("api/[controller]")]
+[ApiController]
+public class ModuleController : ControllerBase
+{
+    private readonly IModuleRepository _repository;
+
+    public ModuleController(IModuleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var modules = await _repository.GetAllAsync();
+        return Ok(modules);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var module = await _repository.GetByIdAsync(id);
+        if (module == null) return NotFound();
+        return Ok(module);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add(moduleDBtable module)
+    {
+        await _repository.AddAsync(module);
+        return Ok("Module added");
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, moduleDBtable module)
+    {
+        if (id != module.module_id) return BadRequest();
+        await _repository.UpdateAsync(module);
+        return Ok("Module updated");
+    }
+}
