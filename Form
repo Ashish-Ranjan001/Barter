@@ -1,0 +1,311 @@
+import React, { useState } from 'react';
+import { ChevronRight, Upload } from 'lucide-react';
+
+const AgentConfigUI = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [agentName, setAgentName] = useState('Customer Query Handler');
+  const [category, setCategory] = useState('Sales');
+  const [description, setDescription] = useState('');
+  const [knowledgeBase, setKnowledgeBase] = useState('');
+  const [instruction, setInstruction] = useState('');
+  const [model, setModel] = useState('OpenAI');
+  const [tools, setTools] = useState([]);
+
+  const steps = [
+    { id: 1, title: 'Basic Info', active: currentStep === 1 },
+    { id: 2, title: 'Add Tools', active: currentStep === 2 },
+    { id: 3, title: 'Add Source/Training Data', active: currentStep === 3 },
+    { id: 4, title: 'Agent Configuration', active: currentStep === 4 }
+  ];
+
+  const availableTools = [
+    { id: 'hubspot', name: 'Hubspot', checked: false },
+    { id: 'google-search', name: 'Google Search', checked: false }
+  ];
+
+  const handleNext = () => {
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const renderStepContent = () => {
+    switch(currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">BASIC INFO - STEP 1</h1>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Agent Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="Sales">Sales</option>
+                    <option value="Support">Support</option>
+                    <option value="Marketing">Marketing</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Agent Description (Optional)
+                </label>
+                <textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Add a template
+                </label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
+                  <option value="">Select a template</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">ADD TOOLS - STEP 2</h1>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Model
+                </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  Choose from the available Large Language Models (LLMs) to power your AI agent's understanding and decision-making abilities.
+                </p>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="OpenAI">OpenAI</option>
+                  <option value="Claude">Claude</option>
+                  <option value="Gemini">Gemini</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tools
+                </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select the tools the agent will use to perform tasks and enhance its capabilities.
+                </p>
+
+                <div className="bg-white border border-gray-300 rounded-md p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-sm font-medium text-gray-700">Available</span>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1 text-sm border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+                        Added
+                      </button>
+                      <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                        Agents
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {availableTools.map((tool) => (
+                      <div key={tool.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={tool.checked}
+                            onChange={() => {}}
+                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                          />
+                          <span className="text-sm text-gray-700">{tool.name}</span>
+                        </div>
+                        <button className="text-sm text-blue-600 hover:text-blue-800">
+                          Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">ADD SOURCE/TRAINING DATA - STEP 3</h1>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Knowledge Base
+                </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select the Knowledge Base that the agent will use to access and process information for generating responses.
+                </p>
+                <select
+                  value={knowledgeBase}
+                  onChange={(e) => setKnowledgeBase(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Add Knowledge base</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Instruction
+                </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  Set the primary instructions to guide the agent's behavior and responses. Include Dos and Don'ts, and the agent's capabilities and task descriptions.
+                </p>
+                <textarea
+                  rows={6}
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  placeholder="Enter instructions for the agent..."
+                />
+              </div>
+
+              <div>
+                <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm">
+                  <Upload className="w-4 h-4" />
+                  Upload Files
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">AGENT CONFIGURATION - STEP 4</h1>
+            </div>
+            <div className="text-center text-gray-600">
+              Agent configuration options would go here...
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold text-gray-800">Dashboard Agent</div>
+          <div className="flex items-center space-x-1">
+            {steps.map((step, index) => (
+              <React.Fragment key={step.id}>
+                <div className={`flex items-center ${step.active ? 'text-white' : 'text-gray-600'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    step.active 
+                      ? 'bg-blue-600 text-white' 
+                      : currentStep > step.id 
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-300 text-gray-600'
+                  }`}>
+                    {currentStep > step.id ? '✓' : step.id}
+                  </div>
+                  <span className={`ml-2 text-sm font-medium px-3 py-1 rounded ${
+                    step.active 
+                      ? 'bg-red-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {step.title}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <ChevronRight className="w-4 h-4 text-gray-400 mx-2" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+            <button
+              onClick={handleBack}
+              disabled={currentStep === 1}
+              className={`px-6 py-2 rounded-md text-sm font-medium ${
+                currentStep === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Back
+            </button>
+
+            <div className="flex gap-3">
+              <button className="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Save as Draft
+              </button>
+              <button
+                onClick={handleNext}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AgentConfigUI;
