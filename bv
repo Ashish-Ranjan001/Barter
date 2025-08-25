@@ -1,0 +1,1529 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Plus, X, Check, Upload, Settings, MessageSquare, Home, Users, Database, MessageCircle } from 'lucide-react';
+
+// API Service
+const apiService = {
+  fetchCategories: async () => {
+    try {
+      const response = await fetch('/server/categories.json');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
+  },
+
+  fetchKnowledgeBase: async () => {
+    try {
+      const response = await fetch('/server/knowledgebase.json');
+      if (!response.ok) throw new Error('Failed to fetch knowledge base');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching knowledge base:', error);
+      return [];
+    }
+  },
+
+  fetchTools: async () => {
+    try {
+      const response = await fetch('/server/tools.json');
+      if (!response.ok) throw new Error('Failed to fetch tools');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+      return [];
+    }
+  }
+};
+
+// Custom Dropdown Component
+const CustomDropdown = ({ options, value, onChange, placeholder, keyField = 'name', loading = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="dropdown-container">
+        <div className="dropdown-button dropdown-loading">
+          <span>Loading...</span>
+          <div className="spinner"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dropdown-container">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="dropdown-button"
+      >
+        <span className={value ? 'dropdown-text' : 'dropdown-placeholder'}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={`dropdown-icon ${isOpen ? 'dropdown-icon-open' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <>
+          <div className="dropdown-overlay" onClick={() => setIsOpen(false)} />
+          <div className="dropdown-menu">
+            {options.length === 0 ? (
+              <div className="dropdown-item dropdown-empty">No options available</div>
+            ) : (
+              options.map((option, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    onChange(option[keyField]);
+                    setIsOpen(false);
+                  }}
+                  className="dropdown-item dropdown-option"
+                >
+                  {option[keyField]}
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// Basic Info Page - Only Agent Name, Categories, and Agent Description
+const BasicInfoPage = ({ formData, setFormData, categories, loading }) => {
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="page-container">
+      <style>{`
+        .page-container {
+          padding: 1.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+          .form-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        .form-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+          display: block;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #374151;
+          margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-textarea {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          resize: vertical;
+          min-height: 100px;
+          transition: all 0.2s;
+        }
+
+        .form-textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .template-button {
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+          color: #3b82f6;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+
+        .template-button:hover {
+          color: #1d4ed8;
+        }
+
+        .dropdown-container {
+          position: relative;
+          width: 100%;
+        }
+
+        .dropdown-button {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: all 0.2s;
+        }
+
+        .dropdown-button:hover {
+          border-color: #9ca3af;
+        }
+
+        .dropdown-button:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dropdown-loading {
+          color: #6b7280;
+        }
+
+        .dropdown-text {
+          color: #1f2937;
+        }
+
+        .dropdown-placeholder {
+          color: #9ca3af;
+        }
+
+        .dropdown-icon {
+          width: 1.25rem;
+          height: 1.25rem;
+          color: #9ca3af;
+          transition: transform 0.2s;
+        }
+
+        .dropdown-icon-open {
+          transform: rotate(180deg);
+        }
+
+        .dropdown-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 10;
+        }
+
+        .dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 0.25rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+          z-index: 20;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .dropdown-item {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: background-color 0.2s;
+        }
+
+        .dropdown-option:hover {
+          background-color: #f9fafb;
+        }
+
+        .dropdown-empty {
+          color: #6b7280;
+          cursor: default;
+        }
+
+        .spinner {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid #e5e7eb;
+          border-top-color: #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+
+      <div className="form-grid">
+        <div className="form-group">
+          <label className="form-label">Agent Name *</label>
+          <input
+            type="text"
+            value={formData.agentName}
+            onChange={(e) => handleInputChange('agentName', e.target.value)}
+            className="form-input"
+            placeholder="Enter agent name"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Categories *</label>
+          <CustomDropdown
+            options={categories}
+            value={formData.category}
+            onChange={(value) => handleInputChange('category', value)}
+            placeholder="Select category"
+            loading={loading.categories}
+          />
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Agent Description (Optional)</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          className="form-textarea"
+          placeholder="Enter agent description"
+        />
+        <button className="template-button">Add as a template</button>
+      </div>
+    </div>
+  );
+};
+
+// Add Source Data Page - Only Tools and Model
+const AddSourceDataPage = ({ formData, setFormData, tools, loading }) => {
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleTool = (tool) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedTools: prev.selectedTools.some(t => t.name === tool.name)
+        ? prev.selectedTools.filter(t => t.name !== tool.name)
+        : [...prev.selectedTools, tool]
+    }));
+  };
+
+  return (
+    <div className="page-container">
+      <style>{`
+        .source-data-container {
+          padding: 1.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .section-group {
+          margin-bottom: 2rem;
+        }
+
+        .section-title {
+          font-size: 1.125rem;
+          font-weight: 500;
+          color: #1f2937;
+          margin-bottom: 0.75rem;
+        }
+
+        .section-description {
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 1rem;
+          line-height: 1.5;
+        }
+
+        .tools-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+          .tools-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        .tools-section {
+          border: 1px solid #e5e7eb;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          background: white;
+        }
+
+        .tools-search {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+        }
+
+        .tool-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.5rem;
+          margin-bottom: 0.5rem;
+          transition: all 0.2s;
+        }
+
+        .tool-item:hover {
+          border-color: #d1d5db;
+          background-color: #f9fafb;
+        }
+
+        .tool-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .tool-icon {
+          width: 2rem;
+          height: 2rem;
+          background-color: #f3f4f6;
+          border-radius: 0.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .tool-name {
+          font-weight: 500;
+          color: #1f2937;
+          font-size: 0.875rem;
+        }
+
+        .tool-button {
+          padding: 0.25rem 0.75rem;
+          font-size: 0.75rem;
+          background-color: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 0.25rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .tool-button:hover {
+          background-color: #2563eb;
+        }
+
+        .tool-button.added {
+          background-color: #059669;
+        }
+
+        .tool-button.added:hover {
+          background-color: #047857;
+        }
+
+        .selected-tools {
+          min-height: 200px;
+        }
+
+        .selected-tool-item {
+          background-color: #eff6ff;
+          border-color: #bfdbfe;
+        }
+
+        .selected-tool-icon {
+          background-color: #dbeafe;
+          color: #3b82f6;
+        }
+
+        .remove-button {
+          color: #dc2626;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 0.25rem;
+          transition: background-color 0.2s;
+        }
+
+        .remove-button:hover {
+          background-color: #fee2e2;
+        }
+
+        .empty-tools {
+          color: #6b7280;
+          text-align: center;
+          padding: 2rem;
+          font-size: 0.875rem;
+        }
+
+        .dropdown-container {
+          position: relative;
+          width: 100%;
+        }
+
+        .dropdown-button {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: all 0.2s;
+        }
+
+        .dropdown-button:hover {
+          border-color: #9ca3af;
+        }
+
+        .dropdown-button:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dropdown-text {
+          color: #1f2937;
+        }
+
+        .dropdown-placeholder {
+          color: #9ca3af;
+        }
+
+        .dropdown-icon {
+          width: 1.25rem;
+          height: 1.25rem;
+          color: #9ca3af;
+          transition: transform 0.2s;
+        }
+
+        .dropdown-icon-open {
+          transform: rotate(180deg);
+        }
+
+        .dropdown-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 10;
+        }
+
+        .dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 0.25rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+          z-index: 20;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .dropdown-item {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: background-color 0.2s;
+        }
+
+        .dropdown-option:hover {
+          background-color: #f9fafb;
+        }
+
+        .dropdown-empty {
+          color: #6b7280;
+          cursor: default;
+        }
+      `}</style>
+
+      <div className="source-data-container">
+        <div className="section-group">
+          <h3 className="section-title">Tools</h3>
+          <p className="section-description">
+            Select the tools the agent will use to perform tasks and enhance its capabilities.
+          </p>
+
+          <div className="tools-grid">
+            <div className="tools-section">
+              <input
+                type="text"
+                placeholder="Search tools..."
+                className="tools-search"
+              />
+              
+              <div className="tools-list">
+                {loading.tools ? (
+                  <div className="empty-tools">Loading tools...</div>
+                ) : tools.length === 0 ? (
+                  <div className="empty-tools">No tools available</div>
+                ) : (
+                  tools.map((tool, index) => (
+                    <div key={index} className="tool-item">
+                      <div className="tool-info">
+                        <div className="tool-icon">
+                          <Settings className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <span className="tool-name">{tool.name}</span>
+                      </div>
+                      <button
+                        onClick={() => toggleTool(tool)}
+                        className={`tool-button ${formData.selectedTools.some(t => t.name === tool.name) ? 'added' : ''}`}
+                      >
+                        {formData.selectedTools.some(t => t.name === tool.name) ? 'Added' : 'Add'}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="tools-section selected-tools">
+              <h4 className="section-title">Added Tools</h4>
+              <div className="tools-list">
+                {formData.selectedTools.length === 0 ? (
+                  <div className="empty-tools">No tools added yet</div>
+                ) : (
+                  formData.selectedTools.map((tool, index) => (
+                    <div key={index} className="tool-item selected-tool-item">
+                      <div className="tool-info">
+                        <div className="tool-icon selected-tool-icon">
+                          <Settings className="w-4 h-4" />
+                        </div>
+                        <span className="tool-name">{tool.name}</span>
+                      </div>
+                      <button
+                        onClick={() => toggleTool(tool)}
+                        className="remove-button"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="section-group">
+          <label className="section-title">Model</label>
+          <p className="section-description">
+            Choose from the available Large Language Models (LLMs) to power your AI agents' understanding and decision-making abilities.
+          </p>
+          <CustomDropdown
+            options={[
+              { name: 'Open AI' },
+              { name: 'Claude' },
+              { name: 'Gemini' },
+              { name: 'Llama' }
+            ]}
+            value={formData.model}
+            onChange={(value) => handleInputChange('model', value)}
+            placeholder="Select Model"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Training Data Page - Knowledge Base and Instruction
+const TrainingDataPage = ({ formData, setFormData, knowledgeBase, loading }) => {
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="page-container">
+      <style>{`
+        .training-container {
+          padding: 1.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .section-group {
+          margin-bottom: 2rem;
+        }
+
+        .section-title {
+          font-size: 1.125rem;
+          font-weight: 500;
+          color: #1f2937;
+          margin-bottom: 0.75rem;
+        }
+
+        .section-description {
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 1rem;
+          line-height: 1.5;
+        }
+
+        .instruction-textarea {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          resize: vertical;
+          min-height: 150px;
+          transition: all 0.2s;
+        }
+
+        .instruction-textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .prompt-buttons {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .prompt-button {
+          padding: 0.25rem 0.75rem;
+          font-size: 0.75rem;
+          background-color: #f3f4f6;
+          color: #374151;
+          border: none;
+          border-radius: 9999px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .prompt-button:hover {
+          background-color: #e5e7eb;
+        }
+
+        .regenerate-button {
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+          color: #3b82f6;
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          text-decoration: underline;
+        }
+
+        .regenerate-button:hover {
+          color: #1d4ed8;
+        }
+
+        .dropdown-container {
+          position: relative;
+          width: 100%;
+        }
+
+        .dropdown-button {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: all 0.2s;
+        }
+
+        .dropdown-button:hover {
+          border-color: #9ca3af;
+        }
+
+        .dropdown-button:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .dropdown-loading {
+          color: #6b7280;
+        }
+
+        .dropdown-text {
+          color: #1f2937;
+        }
+
+        .dropdown-placeholder {
+          color: #9ca3af;
+        }
+
+        .dropdown-icon {
+          width: 1.25rem;
+          height: 1.25rem;
+          color: #9ca3af;
+          transition: transform 0.2s;
+        }
+
+        .dropdown-icon-open {
+          transform: rotate(180deg);
+        }
+
+        .dropdown-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 10;
+        }
+
+        .dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 0.25rem;
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+          z-index: 20;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .dropdown-item {
+          width: 100%;
+          padding: 0.75rem;
+          text-align: left;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: background-color 0.2s;
+        }
+
+        .dropdown-option:hover {
+          background-color: #f9fafb;
+        }
+
+        .dropdown-empty {
+          color: #6b7280;
+          cursor: default;
+        }
+
+        .spinner {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid #e5e7eb;
+          border-top-color: #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+      
+      <div className="training-container">
+        <div className="section-group">
+          <label className="section-title">Knowledge Base</label>
+          <p className="section-description">
+            Select the Knowledge Base that the agent will use to access and process information for generating responses.
+          </p>
+          <CustomDropdown
+            options={knowledgeBase}
+            value={formData.knowledgeBase}
+            onChange={(value) => handleInputChange('knowledgeBase', value)}
+            placeholder="Select Knowledge Base"
+            loading={loading.knowledgeBase}
+          />
+        </div>
+
+        <div className="section-group">
+          <label className="section-title">Instruction</label>
+          <p className="section-description">
+            Set the primary instructions to guide the agent's behavior and responses. Include function calls to enhance the agent's capabilities and task execution.
+          </p>
+          <textarea
+            value={formData.instruction}
+            onChange={(e) => handleInputChange('instruction', e.target.value)}
+            className="instruction-textarea"
+            placeholder="Enter instructions for the agent..."
+          />
+          <div className="prompt-buttons">
+            <button className="prompt-button">Prompt-1</button>
+            <button className="prompt-button">Prompt-2</button>
+          </div>
+          <button className="regenerate-button">
+            <Plus className="w-4 h-4" /> Regenerate
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Chat Settings Page - Welcome Message and Guardrails Config
+const ChatSettingsPage = ({ formData, setFormData }) => {
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="page-container">
+      <style>{`
+        .chat-container {
+          padding: 1.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .section-group {
+          margin-bottom: 2rem;
+        }
+
+        .section-title {
+          font-size: 1.125rem;
+          font-weight: 500;
+          color: #1f2937;
+          margin-bottom: 0.75rem;
+        }
+
+        .section-description {
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 1rem;
+          line-height: 1.5;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .welcome-section {
+          background: #f9fafb;
+          padding: 1.5rem;
+          border-radius: 0.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .welcome-title {
+          font-weight: 500;
+          color: #1f2937;
+          margin-bottom: 0.75rem;
+          font-size: 1rem;
+        }
+
+        .welcome-description {
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 1rem;
+        }
+
+        .features-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        @media (min-width: 768px) {
+          .features-grid {
+            grid-template-columns: repeat(5, 1fr);
+          }
+        }
+
+        .feature-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          cursor: pointer;
+          padding: 0.5rem;
+          border-radius: 0.375rem;
+          transition: background-color 0.2s;
+        }
+
+        .feature-item:hover {
+          background-color: #f3f4f6;
+        }
+
+        .feature-icon-container {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 50%;
+          background-color: #e5e7eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+          transition: all 0.2s;
+        }
+
+        .feature-checkbox {
+          width: 1.5rem;
+          height: 1.5rem;
+          border-radius: 50%;
+          border: 2px solid #9ca3af;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+
+        .feature-checkbox.active {
+          background-color: #3b82f6;
+          border-color: #3b82f6;
+        }
+
+        .feature-text {
+          font-size: 0.75rem;
+          color: #6b7280;
+          line-height: 1.2;
+        }
+
+        .guardrails-section {
+          background: #f9fafb;
+          padding: 1.5rem;
+          border-radius: 0.5rem;
+        }
+
+        .upload-area {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          border: 2px dashed #d1d5db;
+          border-radius: 0.5rem;
+          background-color: white;
+        }
+
+        .upload-content {
+          text-align: center;
+        }
+
+        .upload-icon {
+          width: 2rem;
+          height: 2rem;
+          color: #9ca3af;
+          margin: 0 auto 0.5rem;
+        }
+
+        .upload-text {
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+      `}</style>
+      
+      <div className="chat-container">
+        <div className="welcome-section">
+          <h3 className="welcome-title">Welcome message</h3>
+          <p className="welcome-description">
+            Set up a message that the agent will always send at the beginning of a task. Your agent will use this in its context.
+          </p>
+          <input
+            type="text"
+            value={formData.welcomeMessage}
+            onChange={(e) => handleInputChange('welcomeMessage', e.target.value)}
+            placeholder="Ask me a question"
+            className="form-input"
+          />
+
+          <div className="features-grid">
+            {[
+              { key: 'citations', label: 'Citations' },
+              { key: 'toolCitations', label: 'Tool Citations' },
+              { key: 'uploadFile', label: 'Upload file' },
+              { key: 'followUpSuggestions', label: 'Follow up Suggestions' },
+              { key: 'voiceConfiguration', label: 'Voice Configuration' }
+            ].map((feature) => (
+              <label key={feature.key} className="feature-item">
+                <div className="feature-icon-container">
+                  <div className={`feature-checkbox ${formData[feature.key] ? 'active' : ''}`}>
+                    {formData[feature.key] && <Check className="w-4 h-4 text-white" />}
+                  </div>
+                </div>
+                <span className="feature-text">{feature.label}</span>
+                <input
+                  type="checkbox"
+                  checked={formData[feature.key]}
+                  onChange={(e) => handleInputChange(feature.key, e.target.checked)}
+                  className="sr-only"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="guardrails-section">
+          <h3 className="welcome-title">Guardrails Config</h3>
+          <p className="welcome-description">
+            Validators serve as fundamental components within Guardrails, designed specifically to validate various aspects of an LLM workflow.
+          </p>
+          <div className="upload-area">
+            <div className="upload-content">
+              <Upload className="upload-icon" />
+              <p className="upload-text">No Configure Added</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main App Component
+const AgentCreationApp = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState({
+    categories: true,
+    knowledgeBase: true,
+    tools: true
+  });
+
+  // Dynamic data state
+  const [categories, setCategories] = useState([]);
+  const [knowledgeBase, setKnowledgeBase] = useState([]);
+  const [tools, setTools] = useState([]);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    agentName: 'Customer Query Handler',
+    category: '',
+    description: '',
+    knowledgeBase: '',
+    instruction: '',
+    model: 'Open AI',
+    selectedTools: [],
+    welcomeMessage: '',
+    citations: false,
+    toolCitations: false,
+    uploadFile: false,
+    followUpSuggestions: false,
+    voiceConfiguration: false
+  });
+
+  const steps = [
+    { id: 1, title: 'Basic Info', icon: Home, component: BasicInfoPage },
+    { id: 2, title: 'Add Source Data', icon: Database, component: AddSourceDataPage },
+    { id: 3, title: 'Training Data', icon: Users, component: TrainingDataPage },
+    { id: 4, title: 'Chat Setting', icon: MessageCircle, component: ChatSettingsPage }
+  ];
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      // Load categories
+      try {
+        const categoriesData = await apiService.fetchCategories();
+        setCategories(categoriesData);
+      } finally {
+        setLoading(prev => ({ ...prev, categories: false }));
+      }
+
+      // Load knowledge base
+      try {
+        const knowledgeData = await apiService.fetchKnowledgeBase();
+        setKnowledgeBase(knowledgeData);
+      } finally {
+        setLoading(prev => ({ ...prev, knowledgeBase: false }));
+      }
+
+      // Load tools
+      try {
+        const toolsData = await apiService.fetchTools();
+        setTools(toolsData);
+      } finally {
+        setLoading(prev => ({ ...prev, tools: false }));
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const renderStepContent = () => {
+    const currentStepData = steps.find(step => step.id === currentStep);
+    if (!currentStepData) return null;
+
+    const StepComponent = currentStepData.component;
+    
+    const commonProps = {
+      formData,
+      setFormData,
+      loading
+    };
+
+    switch (currentStep) {
+      case 1:
+        return <StepComponent {...commonProps} categories={categories} />;
+      case 2:
+        return <StepComponent {...commonProps} tools={tools} />;
+      case 3:
+        return <StepComponent {...commonProps} knowledgeBase={knowledgeBase} />;
+      case 4:
+        return <StepComponent {...commonProps} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <style>{`
+        .app-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 1.5rem;
+        }
+
+        .app-header {
+          margin-bottom: 1.5rem;
+        }
+
+        .breadcrumb {
+          display: flex;
+          align-items: center;
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 0.5rem;
+        }
+
+        .breadcrumb-separator {
+          margin: 0 0.5rem;
+        }
+
+        .app-title {
+          font-size: 1.875rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .progress-container {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+          margin-bottom: 1.5rem;
+        }
+
+        .progress-steps {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1.5rem;
+        }
+
+        .step-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: relative;
+        }
+
+        .step-icon-container {
+          width: 2.5rem;
+          height: 2.5rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+          transition: all 0.3s ease;
+        }
+
+        .step-icon-container.completed {
+          background-color: #059669;
+          color: white;
+        }
+
+        .step-icon-container.active {
+          background-color: #3b82f6;
+          color: white;
+        }
+
+        .step-icon-container.inactive {
+          background-color: #e5e7eb;
+          color: #6b7280;
+        }
+
+        .step-title {
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-align: center;
+        }
+
+        .step-title.active {
+          color: #3b82f6;
+        }
+
+        .step-title.inactive {
+          color: #6b7280;
+        }
+
+        .step-connector {
+          flex: 1;
+          height: 2px;
+          background-color: #e5e7eb;
+          margin: 0 1rem;
+          position: relative;
+          top: -1.25rem;
+        }
+
+        .step-connector.completed {
+          background-color: #059669;
+        }
+
+        .main-content {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+
+        .content-area {
+          min-height: 500px;
+        }
+
+        .footer-actions {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+          background-color: #f9fafb;
+        }
+
+        .footer-left {
+          display: flex;
+          gap: 0.75rem;
+        }
+
+        .footer-button {
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 1px solid;
+        }
+
+        .footer-button.cancel {
+          color: #6b7280;
+          background-color: white;
+          border-color: #d1d5db;
+        }
+
+        .footer-button.cancel:hover:not(:disabled) {
+          background-color: #f9fafb;
+        }
+
+        .footer-button.cancel:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .footer-button.draft {
+          color: #374151;
+          background-color: white;
+          border-color: #d1d5db;
+        }
+
+        .footer-button.draft:hover {
+          background-color: #f9fafb;
+        }
+
+        .footer-button.primary {
+          color: white;
+          background-color: #3b82f6;
+          border-color: #3b82f6;
+        }
+
+        .footer-button.primary:hover {
+          background-color: #2563eb;
+          border-color: #2563eb;
+        }
+
+        @media (max-width: 768px) {
+          .app-container {
+            padding: 1rem;
+          }
+
+          .progress-steps {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .step-connector {
+            display: none;
+          }
+
+          .footer-actions {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+          }
+
+          .footer-left {
+            justify-content: center;
+          }
+        }
+      `}</style>
+
+      <div className="app-container">
+        {/* Header */}
+        <div className="app-header">
+          <div className="breadcrumb">
+            <span>Home</span>
+            <span className="breadcrumb-separator">/</span>
+            <span>Create Agent</span>
+          </div>
+          <h1 className="app-title">Create Agent</h1>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="progress-container">
+          <div className="progress-steps">
+            {steps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              
+              return (
+                <React.Fragment key={step.id}>
+                  <div className="step-item">
+                    <div
+                      className={`step-icon-container ${
+                        isCompleted ? 'completed' : isActive ? 'active' : 'inactive'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <StepIcon className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span
+                      className={`step-title ${
+                        isActive ? 'active' : 'inactive'
+                      }`}
+                    >
+                      {step.title}
+                    </span>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`step-connector ${currentStep > step.id ? 'completed' : ''}`} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="main-content">
+          <div className="content-area">
+            {renderStepContent()}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="footer-actions">
+            <button
+              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+              disabled={currentStep === 1}
+              className="footer-button cancel"
+            >
+              {currentStep === 1 ? 'Cancel' : 'Back'}
+            </button>
+            
+            <div className="footer-left">
+              <button className="footer-button draft">
+                Save As Draft
+              </button>
+              
+              {currentStep < steps.length ? (
+                <button
+                  onClick={() => setCurrentStep(currentStep + 1)}
+                  className="footer-button primary"
+                >
+                  Next
+                </button>
+              ) : (
+                <button className="footer-button primary">
+                  Submit
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AgentCreationApp;
