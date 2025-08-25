@@ -1,0 +1,504 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Plus, X, Check, Upload, Settings, MessageSquare } from 'lucide-react';
+
+const AgentCreationUI = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [jsonData, setJsonData] = useState({
+    categories: [],
+    knowledgebase: [],
+    tools: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    agentName: 'Customer Query Handler',
+    category: 'sales',
+    description: '',
+    knowledgeBase: 'Arch_knowledgebase',
+    instruction: '',
+    model: 'Open AI',
+    selectedTools: [],
+    welcomeMessage: '',
+    citations: false,
+    toolCitations: false,
+    uploadFile: false,
+    followUpSuggestions: false,
+    voiceConfiguration: false
+  });
+
+  // Fetch data from JSON server
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Replace with your actual JSON server endpoint
+        const response = await fetch('http://localhost:3001/data');
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const data = await response.json();
+        setJsonData(data);
+      } catch (err) {
+        // Fallback data based on your JSON structure
+        setJsonData({
+          categories: [
+            { name: "sales" },
+            { name: "finance" },
+            { name: "Healthcare" },
+            { name: "Research" }
+          ],
+          knowledgebase: [
+            { name: "Copilot" },
+            { name: "SimpleAI" },
+            { name: "InsightFirst" }
+          ],
+          tools: [
+            { name: "Copilot", agent: "KeyTakeaway", category: "Research" },
+            { name: "SimpleAI", agent: "Hubspot", category: "EVS_Research" },
+            { name: "Genie", agent: "Agent1", category: "Agent2" }
+          ]
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const steps = [
+    { id: 1, title: 'Basic Info', icon: MessageSquare },
+    { id: 2, title: 'Add Source Data', icon: Plus },
+    { id: 3, title: 'Training Data', icon: Settings },
+    { id: 4, title: 'Chat Setting', icon: MessageSquare }
+  ];
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleTool = (tool) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedTools: prev.selectedTools.some(t => t.name === tool.name)
+        ? prev.selectedTools.filter(t => t.name !== tool.name)
+        : [...prev.selectedTools, tool]
+    }));
+  };
+
+  const CustomDropdown = ({ options, value, onChange, placeholder, keyField = 'name' }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+        >
+          <span className={value ? 'text-gray-900' : 'text-gray-500'}>
+            {value || placeholder}
+          </span>
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+            {options.map((option, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => {
+                  onChange(option[keyField]);
+                  setIsOpen(false);
+                }}
+                className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:outline-none focus:bg-gray-50"
+              >
+                {option[keyField]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStepContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading data...</span>
+        </div>
+      );
+    }
+
+    switch (currentStep) {
+      case 1: // Basic Info
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Agent Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.agentName}
+                  onChange={(e) => handleInputChange('agentName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categories *
+                </label>
+                <CustomDropdown
+                  options={jsonData.categories}
+                  value={formData.category}
+                  onChange={(value) => handleInputChange('category', value)}
+                  placeholder="Select category"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Agent Description (Optional)
+              </label>
+              <textarea
+                rows="4"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter agent description"
+              />
+              <button className="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                Add as a template
+              </button>
+            </div>
+
+            {/* Welcome Message Section */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium text-gray-800 mb-3">Welcome message</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Set up a message that the agent will always send at the beginning of a task. Your agent will use this in its context.
+              </p>
+              <input
+                type="text"
+                value={formData.welcomeMessage}
+                onChange={(e) => handleInputChange('welcomeMessage', e.target.value)}
+                placeholder="Ask me a question"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Feature toggles */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                {[
+                  { key: 'citations', label: 'Citations' },
+                  { key: 'toolCitations', label: 'Tool Citations' },
+                  { key: 'uploadFile', label: 'Upload file' },
+                  { key: 'followUpSuggestions', label: 'Follow up Suggestions' },
+                  { key: 'voiceConfiguration', label: 'Voice Configuration' }
+                ].map((feature) => (
+                  <label key={feature.key} className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mb-2">
+                      <div className={`w-6 h-6 rounded-full border-2 ${
+                        formData[feature.key] ? 'bg-blue-600 border-blue-600' : 'border-gray-400'
+                      }`}>
+                        {formData[feature.key] && <Check className="w-4 h-4 text-white m-auto" />}
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-600">{feature.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={formData[feature.key]}
+                      onChange={(e) => handleInputChange(feature.key, e.target.checked)}
+                      className="sr-only"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Guardrails Config */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium text-gray-800 mb-3">Guardrails Config</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Validators serve as fundamental components within Guardrails, designed specifically to validate various aspects of an LLM workflow. Their primary function is to act as a barrier, ensuring that end users.
+              </p>
+              <div className="flex items-center justify-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <div className="text-center">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">No Configure Added</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2: // Add Source Data
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Knowledge Base
+              </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Select the Knowledge Base that the agent will use to access and process information for generating responses.
+              </p>
+              <CustomDropdown
+                options={jsonData.knowledgebase}
+                value={formData.knowledgeBase}
+                onChange={(value) => handleInputChange('knowledgeBase', value)}
+                placeholder="Select Knowledge Base"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Instruction
+              </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Set the primary instructions to guide the agent's behavior and responses. Include function calls to enhance the agent's capabilities and task execution.
+              </p>
+              <textarea
+                rows="6"
+                value={formData.instruction}
+                onChange={(e) => handleInputChange('instruction', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter instructions for the agent..."
+              />
+              <div className="mt-2 flex gap-2">
+                <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200">
+                  Prompt-1
+                </button>
+                <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200">
+                  Prompt-2
+                </button>
+              </div>
+              <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <Plus className="w-4 h-4" /> Regenerate
+              </button>
+            </div>
+
+            {/* Tools Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-800 mb-2">Tools</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Select the tools the agent will use to perform tasks and enhance its capabilities.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    {jsonData.tools.map((tool, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <span className="font-medium">{tool.name}</span>
+                        </div>
+                        <button
+                          onClick={() => toggleTool(tool)}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          {formData.selectedTools.some(t => t.name === tool.name) ? 'Added' : 'Add'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-3">Added Tools</h4>
+                  <div className="space-y-2">
+                    {formData.selectedTools.map((tool, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-blue-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <span className="font-medium">{tool.name}</span>
+                        </div>
+                        <button
+                          onClick={() => toggleTool(tool)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {formData.selectedTools.length === 0 && (
+                      <p className="text-gray-500 text-center py-8">No tools added yet</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Section - Moved below Tools */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Model
+              </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Choose from the available Large Language Models (LLMs) to power your AI agents' understanding and decision-making abilities.
+              </p>
+              <CustomDropdown
+                options={[
+                  { name: 'Open AI' },
+                  { name: 'Claude' },
+                  { name: 'Gemini' },
+                  { name: 'Llama' }
+                ]}
+                value={formData.model}
+                onChange={(value) => handleInputChange('model', value)}
+                placeholder="Select Model"
+              />
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-2">Usable Flow</h4>
+              <div className="flex items-center justify-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <p className="text-gray-500">No flow configured</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3: // Training Data
+        return (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Training Data Configuration</h3>
+            <p className="text-gray-600">Configure training data for your agent here.</p>
+          </div>
+        );
+
+      case 4: // Chat Setting
+        return (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Chat Settings</h3>
+            <p className="text-gray-600">Configure chat settings for your agent here.</p>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center text-sm text-gray-500 mb-2">
+            <span>Home</span>
+            <span className="mx-2">/</span>
+            <span>Create Agent</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Create Agent</h1>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="bg-white rounded-lg shadow-sm mb-6">
+          <div className="flex items-center justify-between p-6">
+            {steps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              
+              return (
+                <React.Fragment key={step.id}>
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                        isCompleted
+                          ? 'bg-green-600 text-white'
+                          : isActive
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <StepIcon className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-sm font-medium ${
+                        isActive ? 'text-blue-600' : 'text-gray-500'
+                      }`}
+                    >
+                      {step.title}
+                    </span>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className="flex-1 h-0.5 bg-gray-200 mx-4">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          currentStep > step.id ? 'bg-green-600' : 'bg-gray-200'
+                        }`}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm">
+          <div className="p-6">
+            {renderStepContent()}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex justify-between items-center p-6 border-t border-gray-200">
+            <button
+              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+              disabled={currentStep === 1}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            
+            <div className="flex gap-3">
+              <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
+                Save As Draft
+              </button>
+              
+              {currentStep < steps.length ? (
+                <button
+                  onClick={() => setCurrentStep(currentStep + 1)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Next
+                </button>
+              ) : (
+                <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Submit
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AgentCreationUI;
